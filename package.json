@@ -8,6 +8,9 @@
     "start": "next start",
     "check:prototype": "node scripts/check-prototype.mjs"
   },
+  "engines": {
+    "node": ">=22.11.0 <25"
+  },
   "dependencies": {
     "framer-motion": "^13.2.0",
     "jspdf": "^4.2.1",

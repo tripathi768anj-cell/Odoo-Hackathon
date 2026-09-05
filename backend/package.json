@@ -6,6 +6,9 @@
   "author": "",
   "type": "module",
   "main": "src/index.ts",
+  "engines": {
+    "node": ">=22.11.0 <25"
+  },
   "scripts": {
     "start": "tsx src/index.ts",
     "dev": "tsx watch src/index.ts",
