@@ -162,9 +162,48 @@ export type Quote = {
     grandTotal: MoneyString;
   };
   risk?: { score: MoneyString; level: string } | null;
+  lines?: QuoteLine[];
+  recommendations?: QuoteRecommendation[];
   availableActions?: string[];
   createdAt: string;
   updatedAt: string;
+};
+
+export type QuoteLine = {
+  id: string;
+  productId: string;
+  variantId?: string | null;
+  quantity: string;
+  discountPct: string;
+  billingType: "one_time" | "recurring";
+  snapshot: { name: string; categoryCode?: string | null; unitPrice: string };
+  totals: { subtotal: string; net: string; total: string };
+};
+
+export type QuoteRecommendation = {
+  productId: string;
+  variantId?: string | null;
+  name: string;
+  categoryCode?: string | null;
+  unitPrice: string;
+};
+
+export type ApprovalInboxItem = {
+  approval: {
+    id: string;
+    quoteId: string;
+    role: string;
+    status: string;
+    sequence: number;
+    createdAt: string;
+  };
+  quote: {
+    id: string;
+    number: string;
+    status: QuoteStatus;
+    grandTotal: string;
+    ownerUserId: string;
+  };
 };
 
 export type ListResponse<T> = { data: T[]; page: { limit: number; nextCursor: string | null } };
@@ -256,6 +295,19 @@ export const quotesApi = {
       idempotencyKey,
     }),
 
+  updateLine: (
+    quoteId: string,
+    lineId: string,
+    revision: number,
+    input: { quantity?: string; discountPct?: string },
+  ) =>
+    apiRequest<ItemResponse<Quote>>(`/quotes/${quoteId}/lines/${lineId}`, {
+      method: "PATCH",
+      body: input,
+      ifMatch: `W/"${revision}"`,
+      idempotencyKey: newIdempotencyKey(),
+    }),
+
   cancel: (id: string, revision: number, reason: string, idempotencyKey: string) =>
     apiRequest<ItemResponse<Quote>>(`/quotes/${id}/cancel`, {
       method: "POST",
@@ -318,4 +370,9 @@ export const dealHealthApi = {
   // see backend/src/api/v1/health.routes.ts and tests/integration/health.test.ts.
   list: () =>
     apiRequest<{ alerts: DealHealthAlert[]; summary: { totalActive: number } }>("/deal-health"),
+};
+
+export const approvalsApi = {
+  inbox: (query?: { limit?: number; cursor?: string }) =>
+    apiRequest<ListResponse<ApprovalInboxItem>>("/approvals/inbox", { query }),
 };

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { Badge, Button, Card, Logo, ThemeToggle, useTheme } from "../components/ui";
-import { AuthProvider, useAuth } from "../lib/auth-context";
+import { useAuth } from "../lib/auth-context";
 import { ApiError } from "../lib/api-client";
 
 function slugify(value: string) {
@@ -182,9 +182,5 @@ function RegisterContent() {
 }
 
 export default function RegisterPage() {
-  return (
-    <AuthProvider>
-      <RegisterContent />
-    </AuthProvider>
-  );
+  return <RegisterContent />;
 }

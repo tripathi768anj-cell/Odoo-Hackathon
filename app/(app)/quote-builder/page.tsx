@@ -1,19 +1,58 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, Percent, Plus, Send, Sparkles } from "lucide-react";
 import { Badge, Button, Card, DataTable, PageHead, PrototypeBadge, Stepper, ToastStack, useToast } from "../../components/ui";
 import { INITIAL_LINES, LineItem, QuoteStage, money, percent } from "../../lib/demo-types";
+import { ApiError, Quote, quotesApi, newIdempotencyKey } from "../../lib/api-client";
+
+function stageForStatus(status: Quote["status"]): QuoteStage {
+  if (status === "awaitingApproval" || status === "submittedForApproval") return "Pending approval";
+  if (status === "approvedInternal") return "Approved";
+  if (status === "converted") return "Fulfillment";
+  return "Draft";
+}
 
 export default function QuoteBuilderPage() {
   const router = useRouter();
   const { toast, kind, notify, dismiss } = useToast();
 
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [quoteStage, setQuoteStage] = useState<QuoteStage>("Draft");
   const [approvalDecision, setApprovalDecision] = useState("Finance review pending");
-  const [lines, setLines] = useState<LineItem[]>(INITIAL_LINES);
-  const [, setReturnedQuotes] = useState<string[]>([]);
+  const [lines, setLines] = useState<LineItem[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const listed = await quotesApi.list({ limit: 1 });
+        const first = listed.data[0];
+        if (!first) throw new Error("No quotes are available for this workspace.");
+        const detail = (await quotesApi.get(first.id)).data;
+        if (cancelled) return;
+        setQuote(detail);
+        setQuoteStage(stageForStatus(detail.status));
+        setLines((detail.lines ?? []).map((line) => ({
+          id: line.id,
+          product: line.snapshot.name,
+          category: line.snapshot.categoryCode ?? "Product",
+          qty: Number(line.quantity),
+          price: Number(line.snapshot.unitPrice),
+          discount: Number(line.discountPct),
+          cap: 10,
+        })));
+      } catch (error) {
+        if (!cancelled) notify(error instanceof ApiError ? error.message : "Could not load a quote from the backend.", "error");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [notify]);
 
   const totals = useMemo(() => {
     const gross = lines.reduce((sum, line) => sum + line.qty * line.price, 0);
@@ -37,32 +76,64 @@ export default function QuoteBuilderPage() {
   };
 
   const addUpsellToQuote = (item: { product: string; category: string; price: number; cap: number }) => {
-    const id = `upsell-${Date.now().toString(36)}`;
-    setLines((current) => [...current, { id, qty: 1, discount: 0, ...item }]);
-    notify(`${item.product} added to Q-1042 at ${money(item.price)}`, "success");
+    notify(`${item.product} is available after selecting a catalog product from the backend.`, "info");
   };
 
-  const submitQuote = () => {
-    setQuoteStage("Pending approval");
-    setApprovalDecision("Sales Lead approved; Finance Director pending");
-    setReturnedQuotes((q) => q.filter((id) => id !== "Q-1042"));
-    notify("Q-1042 escalated to approval matrix", "success");
-    router.push("/approvals");
+  const saveDraft = async () => {
+    if (!quote) return;
+    setSaving(true);
+    try {
+      let revision = quote.revision;
+      let latest = quote;
+      for (const line of lines) {
+        const result = await quotesApi.updateLine(quote.id, line.id, revision, {
+          quantity: String(line.qty),
+          discountPct: String(line.discount),
+        });
+        latest = result.data;
+        revision = latest.revision;
+      }
+      setQuote(latest);
+      notify("Quote changes saved to the backend.", "success");
+    } catch (error) {
+      notify(error instanceof ApiError ? error.message : "Could not save quote changes.", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const submitQuote = async () => {
+    if (!quote) return;
+    setSaving(true);
+    try {
+      await saveDraft();
+      const latest = (await quotesApi.get(quote.id)).data;
+      const submitted = (await quotesApi.submit(quote.id, latest.revision, newIdempotencyKey())).data;
+      setQuote(submitted);
+      setQuoteStage(stageForStatus(submitted.status));
+      setApprovalDecision("Approval workflow started");
+      notify(`${submitted.number} submitted to the approval matrix.`, "success");
+      router.push("/approvals");
+    } catch (error) {
+      notify(error instanceof ApiError ? error.message : "Could not submit the quote.", "error");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <>
       <PageHead
         eyebrow="Quote Configurator"
-        title="Quotation Q-1042: Acme Corp"
-        subtitle="Gold Tier Pricing. Automated margin guard and multi-tier approval checks."
+        title={loading ? "Loading quotation..." : `Quotation ${quote?.number ?? ""}: ${quote?.customer.name ?? ""}`}
+        subtitle="Live quote data, pricing rules, and approval state from the backend."
         actions={
           <>
             <Badge tone={totals.blended > 10 ? "red" : "green"}>
               <Percent size={11} /> {percent(totals.blended)} Blended Discount
             </Badge>
-            <Button onClick={() => notify("Quote changes saved to draft", "info")}>Save Draft</Button>
-            <Button tone="primary" onClick={submitQuote}>
+            <Button onClick={saveDraft} disabled={!quote || saving}>{saving ? "Saving..." : "Save Draft"}</Button>
+            <Button tone="primary" onClick={submitQuote} disabled={!quote || saving}>
               <Send size={15} /> Submit for Approval
             </Button>
             <PrototypeBadge />

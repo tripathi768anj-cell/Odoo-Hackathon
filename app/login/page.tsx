@@ -5,14 +5,14 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import { Badge, Button, Card, Logo, ThemeToggle, useTheme } from "../components/ui";
-import { AuthProvider, useAuth } from "../lib/auth-context";
+import { useAuth } from "../lib/auth-context";
 import { ApiError } from "../lib/api-client";
 
 function LoginContent() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const { login } = useAuth();
-  const [email, setEmail] = useState("alice@acme.test");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -100,7 +100,7 @@ function LoginContent() {
               </label>
               <div className="cluster" style={{ justifyContent: "space-between" }}>
                 <label className="check-row">
-                  <input type="checkbox" defaultChecked /> Remember me
+                  <input type="checkbox" defaultChecked disabled /> Keep this device signed in
                 </label>
                 <Link href="/forgot-password" style={{ color: "var(--accent)", fontWeight: 700, fontSize: 12.5 }}>
                   Forgot password?
@@ -133,9 +133,5 @@ function LoginContent() {
 }
 
 export default function LoginPage() {
-  return (
-    <AuthProvider>
-      <LoginContent />
-    </AuthProvider>
-  );
+  return <LoginContent />;
 }

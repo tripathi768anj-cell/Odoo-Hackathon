@@ -1,72 +1,73 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, ArrowRight, Check, CheckCircle2, Clock, Inbox } from "lucide-react";
 import { Badge, Button, Card, DataTable, Empty, Metric, PageHead, PrototypeBadge, ToastStack, useToast } from "../../components/ui";
 import { QuoteStage } from "../../lib/demo-types";
+import { ApiError, ApprovalInboxItem, approvalsApi, newIdempotencyKey, quotesApi } from "../../lib/api-client";
 
 export default function ApprovalsPage() {
   const router = useRouter();
   const { toast, kind, notify, dismiss } = useToast();
 
   const [approvalFilter, setApprovalFilter] = useState("All");
-  const [returnedQuotes] = useState<string[]>([]);
-  const [quoteStage, setQuoteStage] = useState<QuoteStage>("Draft");
-  const [, setApprovalDecision] = useState("Finance review pending");
+  const [items, setItems] = useState<ApprovalInboxItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
-  const approveQuote = () => {
-    setQuoteStage("Approved");
-    setApprovalDecision("Approved by Sales Ops & Finance Director");
-    notify("Q-1042 approved. Stock reservation allocated.", "success");
-    router.push("/fulfillment");
+  const loadInbox = async () => {
+    setLoading(true);
+    try {
+      setItems((await approvalsApi.inbox({ limit: 100 })).data);
+    } catch (error) {
+      notify(error instanceof ApiError ? error.message : "Could not load the approval inbox.", "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const q1042Status = returnedQuotes.includes("Q-1042") ? "Returned" : quoteStage === "Approved" || quoteStage === "Fulfillment" || quoteStage === "Subscribed" || quoteStage === "Invoiced" || quoteStage === "Paid" ? "Approved" : "Pending";
-  const all: { id: string; row: React.ReactNode[]; status: string }[] = [
-    {
-      id: "Q-1042",
-      status: q1042Status,
-      row: [
-        <strong key="q">Q-1042</strong>,
-        "Acme Corp",
-        <Badge tone="red" key="r">Major Deal</Badge>,
-        "Sales Ops + Finance Director",
-        <span className="mono" key="w">₹42,400</span>,
-        "M. Shah / Sarah J.",
-        <Badge tone="amber" key="t">1h left</Badge>,
-        <Button key="a" tone="primary" onClick={() => { notify("Approval Detail loaded", "info"); router.push("/approval-detail"); }}>Open Review <ArrowRight size={14} aria-hidden="true" /></Button>
-      ]
-    },
-    {
-      id: "Q-1039",
-      status: "Pending",
-      row: [
-        <strong key="q">Q-1039</strong>,
-        "Beta Industries",
-        <Badge tone="amber" key="r">Mid Tier</Badge>,
-        "Sales Team Lead",
-        <span className="mono" key="w">₹18,200</span>,
-        "David K.",
-        <Badge tone="neutral" key="t">3h left</Badge>,
-        <Button key="a" onClick={() => { notify("Approval Detail loaded", "info"); router.push("/approval-detail"); }}>Open Review <ArrowRight size={14} aria-hidden="true" /></Button>
-      ]
-    },
-    {
-      id: "Q-1044",
-      status: "Approved",
-      row: [
-        <strong key="q">Q-1044</strong>,
-        "Nova Retail",
-        <Badge tone="green" key="r">Standard</Badge>,
-        "Auto Gating",
-        <span className="mono" key="w">₹5,100</span>,
-        "Liam P.",
-        <Badge tone="green" key="t">Approved</Badge>,
-        <Button key="a" onClick={() => notify("Small quote approved via automated rules", "success")}>OK</Button>
-      ]
+  useEffect(() => { void loadInbox(); }, []);
+
+  const approveQuote = async (item?: ApprovalInboxItem) => {
+    const targets = item ? [item] : shown.map((row) => row.item);
+    if (!targets.length) return;
+    setBusyId(item?.approval.id ?? "all");
+    try {
+      await Promise.all(targets.map((target) => quotesApi.decide(
+        target.approval.quoteId,
+        target.approval.id,
+        "approve",
+        undefined,
+        newIdempotencyKey(),
+      )));
+      notify(targets.length === 1 ? `${targets[0].quote.number} approved.` : `${targets.length} approvals processed.`, "success");
+      await loadInbox();
+      if (targets.length === 1) router.push("/fulfillment");
+    } catch (error) {
+      notify(error instanceof ApiError ? error.message : "Could not process the approval.", "error");
+    } finally {
+      setBusyId(null);
     }
-  ];
+  };
+
+  const all = items.map((item) => ({
+    id: item.approval.id,
+    status: "Pending",
+    item,
+    row: [
+      <strong key="q">{item.quote.number}</strong>,
+      item.quote.id,
+      <Badge tone="red" key="r">{item.approval.role}</Badge>,
+      `Step ${item.approval.sequence}`,
+      <span className="mono" key="w">{item.quote.grandTotal}</span>,
+      item.quote.ownerUserId,
+      <Badge tone="amber" key="t">Pending</Badge>,
+      <Button key="a" tone="primary" disabled={busyId !== null} onClick={() => approveQuote(item)}>
+        <Check size={14} aria-hidden="true" /> Approve <ArrowRight size={14} aria-hidden="true" />
+      </Button>,
+    ],
+  }));
   const shown = approvalFilter === "All" ? all : all.filter((r) => r.status === approvalFilter);
 
   return (
@@ -96,12 +97,14 @@ export default function ApprovalsPage() {
       <Card
         title={`${approvalFilter} Approvals Queue`}
         action={
-          <Button tone="primary" onClick={approveQuote}>
+            <Button tone="primary" disabled={!shown.length || busyId !== null} onClick={() => approveQuote()}>
             <Check size={15} aria-hidden="true" /> Approve All
           </Button>
         }
       >
-        {!shown.length ? (
+        {loading ? (
+          <div className="notice blue">Loading approval inbox...</div>
+        ) : !shown.length ? (
           <Empty
             icon={<Inbox size={32} aria-hidden="true" />}
             title={`No ${approvalFilter.toLowerCase()} approval requests`}

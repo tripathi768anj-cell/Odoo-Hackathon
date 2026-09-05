@@ -19,7 +19,7 @@ import {
   UserRound
 } from "lucide-react";
 import { Badge, Logo, ThemeToggle, ToastStack, useTheme, useToast } from "../components/ui";
-import { AuthProvider, useAuth } from "../lib/auth-context";
+import { useAuth } from "../lib/auth-context";
 
 type NavRoute =
   | "dashboard"
@@ -339,9 +339,5 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <AuthProvider>
-      <AppLayoutContent>{children}</AppLayoutContent>
-    </AuthProvider>
-  );
+  return <AppLayoutContent>{children}</AppLayoutContent>;
 }

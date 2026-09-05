@@ -88,11 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setOrganization(data.organization);
       setMembership(data.membership);
       setStatus("authenticated");
-      try {
-        await loadMe();
-      } catch {
-        // /me failure after a successful login shouldn't strand the user on the login page
-      }
+      void loadMe().catch(() => undefined);
     },
     [loadMe],
   );
@@ -112,11 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setOrganization(data.organization);
       setMembership(data.membership);
       setStatus("authenticated");
-      try {
-        await loadMe();
-      } catch {
-        // same rationale as login()
-      }
+      void loadMe().catch(() => undefined);
     },
     [loadMe],
   );
