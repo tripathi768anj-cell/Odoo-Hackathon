@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import { Badge, Button, Card, Logo, ThemeToggle, useTheme } from "../components/ui";
-import { useAuth } from "../lib/auth-context";
+import { AuthProvider, useAuth } from "../lib/auth-context";
 import { ApiError } from "../lib/api-client";
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const { login } = useAuth();
@@ -129,5 +129,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <AuthProvider>
+      <LoginContent />
+    </AuthProvider>
   );
 }

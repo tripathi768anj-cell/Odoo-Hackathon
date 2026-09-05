@@ -279,6 +279,14 @@ The frontend and backend deploy independently. Recommended shape: **frontend on 
 host (Vercel, or any Node host), backend on a Node host with a persistent process
 (Render / Railway / Fly.io / a VPS), database on Neon.**
 
+> **One-click Render:** [`render.yaml`](render.yaml) is a Blueprint that provisions both services
+> (API + web) with the migrate step wired in. In Render: **New → Blueprint → this repo → Apply**,
+> then fill the prompted secrets (`DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `APP_ORIGIN`,
+> `PORTAL_ORIGIN`, `NEXT_PUBLIC_API_URL`). Node is pinned to 22 via `engines` + `.node-version`.
+> If a Render `next build` fails while prerendering `/_global-error` with a `useContext` null,
+> it is an old-Node or out-of-memory build environment — pin Node 22, clear the build cache,
+> and use an instance with ≥ 1 GB build memory (or deploy the frontend on Vercel).
+
 Pre-flight checklist (from [`docs/runbooks/01-deploy-rollback.md`](docs/runbooks/01-deploy-rollback.md)):
 
 - [ ] Target branch passes `typecheck`, `lint`, `test:unit`, `test:contract`, `build`.

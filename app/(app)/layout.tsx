@@ -19,7 +19,7 @@ import {
   UserRound
 } from "lucide-react";
 import { Badge, Logo, ThemeToggle, ToastStack, useTheme, useToast } from "../components/ui";
-import { useAuth } from "../lib/auth-context";
+import { AuthProvider, useAuth } from "../lib/auth-context";
 
 type NavRoute =
   | "dashboard"
@@ -119,7 +119,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
@@ -335,5 +335,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
       <ToastStack toast={toast} kind={kind} onDismiss={dismiss} />
     </AuthGate>
+  );
+}
+
+export default function AppLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthProvider>
+      <AppLayoutContent>{children}</AppLayoutContent>
+    </AuthProvider>
   );
 }

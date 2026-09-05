@@ -1,0 +1,72 @@
+# Render Blueprint — deploys the DealFlow360 API and web frontend together.
+#
+# Usage:
+#   1. Push this file to the repo.
+#   2. Render dashboard → New → Blueprint → pick this repo → Apply.
+#   3. Render prompts for every var marked `sync: false` — fill them in:
+#        dealflow360-api : DATABASE_URL, DATABASE_URL_UNPOOLED (from Neon),
+#                          APP_ORIGIN, PORTAL_ORIGIN (the web URL, set after first deploy)
+#        dealflow360-web : NEXT_PUBLIC_API_URL = https://<api-host>/api/v1
+#   4. First deploy: set APP_ORIGIN/PORTAL_ORIGIN to a placeholder, deploy both,
+#      then update them to the real dealflow360-web URL and redeploy the API.
+#
+# The database is Neon (external) — this blueprint does not create a Render database.
+# JWT_ACCESS_SECRET and SESSION_PEPPER are generated once by Render and kept.
+
+services:
+  # ---------------------------------------------------------------------------
+  # Backend API — Express 5 (backend/)
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: dealflow360-api
+    runtime: node
+    plan: starter            # preDeployCommand needs a paid instance; bump to standard if migrations are heavy
+    rootDir: backend
+    buildCommand: npm ci && npm run build
+    preDeployCommand: npm run db:migrate   # runs with DATABASE_URL_UNPOOLED; deploy halts if it fails
+    startCommand: node dist/index.js
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 22.11.0
+      - key: DATABASE_URL              # Neon pooled connection string
+        sync: false
+      - key: DATABASE_URL_UNPOOLED     # Neon direct connection string (migrations only)
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: SESSION_PEPPER
+        generateValue: true
+      - key: APP_ORIGIN               # exact origin of dealflow360-web, e.g. https://dealflow360-web.onrender.com
+        sync: false
+      - key: PORTAL_ORIGIN            # customer portal origin (same as APP_ORIGIN unless split)
+        sync: false
+      # Optional providers — uncomment and set when enabled:
+      # - key: EMAIL_PROVIDER_API_KEY
+      #   sync: false
+      # - key: EMAIL_FROM
+      #   sync: false
+      # - key: ERROR_TRACKING_DSN
+      #   sync: false
+
+  # ---------------------------------------------------------------------------
+  # Frontend — Next.js 16 (repo root)
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: dealflow360-web
+    runtime: node
+    plan: standard           # next build is memory-hungry; 512 MB (starter) tends to OOM
+    rootDir: .
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 22.11.0
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=1024
+      - key: NEXT_PUBLIC_API_URL      # https://<dealflow360-api host>/api/v1  — inlined at build time
+        sync: false
