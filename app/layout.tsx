@@ -1,10 +1,15 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AuthProvider } from "./lib/auth-context";
 
 export const metadata: Metadata = {
   title: "DealFlow 360 | Enterprise Sales & Revenue Operations",
   description: "Enterprise sales operations from quotation, discount gating, multi-level approval, and stock allocation to billing and payment reconciliation."
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

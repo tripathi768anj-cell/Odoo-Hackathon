@@ -139,8 +139,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+const defaultAuthValue: AuthContextValue = {
+  status: "unauthenticated",
+  user: null,
+  organization: null,
+  membership: null,
+  permissions: [],
+  login: async () => {},
+  bootstrap: async () => {},
+  logout: async () => {},
+};
+
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
+  return ctx ?? defaultAuthValue;
 }
