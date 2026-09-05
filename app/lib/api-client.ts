@@ -314,8 +314,8 @@ export const customersApi = {
 // ---- Deal health ----
 
 export const dealHealthApi = {
+  // NOTE: the backend returns { summary, alerts } directly (no `data` envelope) —
+  // see backend/src/api/v1/health.routes.ts and tests/integration/health.test.ts.
   list: () =>
-    apiRequest<ItemResponse<{ alerts: DealHealthAlert[]; summary: { totalActive: number } }>>(
-      "/deal-health",
-    ),
+    apiRequest<{ alerts: DealHealthAlert[]; summary: { totalActive: number } }>("/deal-health"),
 };

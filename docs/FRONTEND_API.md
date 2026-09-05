@@ -98,6 +98,7 @@ Example fields:
 
 ## Quotes and approvals (internal)
 
+
 | Endpoint | Request | Response/UI behavior |
 | --- | --- | --- |
 | `GET /quotes` | `status`, `ownerId`, `teamId`, `customerId`, `productId`, `categoryId`, `from`, `to`, `sort`, cursor | Quote card list: number/customer/amount/status/risk/actions. |

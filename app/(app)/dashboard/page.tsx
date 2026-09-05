@@ -35,7 +35,7 @@ export default function DashboardPage() {
         dealHealthApi.list().catch(() => null),
       ]);
       setQuotes(quotesRes.data);
-      setAlertCount(healthRes?.data.summary.totalActive ?? null);
+      setAlertCount(healthRes?.summary.totalActive ?? null);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Could not load the dashboard.");
     } finally {

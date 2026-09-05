@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { eq, and, desc, asc, sql } from "drizzle-orm";
+import { eq, and, desc, asc, inArray } from "drizzle-orm";
 import { authenticate } from "../../middleware/authenticate.js";
 import { ApiError } from "../../shared/errors.js";
 import { withTenantTransaction } from "../../db/transaction.js";
@@ -211,6 +211,123 @@ async function buildQuoteReadModel(
     createdAt: quote.createdAt,
     updatedAt: quote.updatedAt,
   };
+}
+
+/**
+ * Lightweight list read model.
+ *
+ * Unlike buildQuoteReadModel (used by the detail/quote-builder endpoints), this
+ * does NOT resolve per-quote lines, risk previews, or recommendations. Those are
+ * the expensive parts: they cost ~10 sequential round-trips per quote (risk
+ * alone fires 3 queries per line), which makes GET /quotes take 10s+ once a
+ * tenant has more than a handful of quotes. Lists only need the stored quote
+ * columns plus customer/owner names, so we batch those lookups into 3 queries
+ * total (customers, memberships, users) and reuse the risk score that was
+ * already persisted on the quote row.
+ */
+async function buildQuoteListModels(
+  tx: any,
+  tenantId: string,
+  quotes: typeof schema.quotes.$inferSelect[],
+  role: string,
+) {
+  if (quotes.length === 0) return [];
+
+  const customerIds = [...new Set(quotes.map((q) => q.customerId))];
+  const membershipIds = [...new Set(quotes.map((q) => q.ownerMembershipId).filter(Boolean))];
+  const ownerUserIds = [
+    ...new Set(quotes.map((q) => q.ownerUserId).filter(Boolean)),
+  ];
+
+  const [customerRows, membershipRows, userRows] = await Promise.all([
+    customerIds.length > 0
+      ? tx
+          .select()
+          .from(schema.customers)
+          .where(
+            and(
+              eq(schema.customers.tenantId, tenantId),
+              inArray(schema.customers.id, customerIds as string[]),
+            ),
+          )
+      : Promise.resolve([] as never[]),
+    membershipIds.length > 0
+      ? tx
+          .select()
+          .from(schema.memberships)
+          .where(inArray(schema.memberships.id, membershipIds as string[]))
+      : Promise.resolve([] as never[]),
+    ownerUserIds.length > 0
+      ? tx
+          .select()
+          .from(schema.users)
+          .where(inArray(schema.users.id, ownerUserIds as string[]))
+      : Promise.resolve([] as never[]),
+  ]);
+
+  const customerById = new Map(
+    (customerRows as typeof schema.customers.$inferSelect[]).map((c) => [c.id, c] as const),
+  );
+  const membershipById = new Map(
+    (membershipRows as typeof schema.memberships.$inferSelect[]).map((m) => [m.id, m] as const),
+  );
+  const userById = new Map(
+    (userRows as typeof schema.users.$inferSelect[]).map((u) => [u.id, u] as const),
+  );
+
+  return quotes.map((quote) => {
+    const customer = customerById.get(quote.customerId);
+    const ownerMembership = quote.ownerMembershipId
+      ? membershipById.get(quote.ownerMembershipId)
+      : undefined;
+    const ownerUser = ownerMembership
+      ? userById.get(ownerMembership.userId)
+      : quote.ownerUserId
+        ? userById.get(quote.ownerUserId)
+        : undefined;
+
+    return {
+      id: quote.id,
+      number: quote.number,
+      status: quote.status,
+      revision: quote.revision,
+      version: quote.currentVersion,
+      currency: quote.currency,
+      customer: customer
+        ? {
+            id: customer.id,
+            name: customer.name,
+            tierCode: customer.tierCode,
+            currency: customer.currency,
+          }
+        : null,
+      owner: {
+        membershipId: ownerMembership?.id ?? quote.ownerMembershipId ?? null,
+        userId: ownerMembership?.userId ?? quote.ownerUserId ?? null,
+        teamId: ownerMembership?.teamId ?? quote.teamId ?? null,
+        role: ownerMembership?.role ?? null,
+        name: ownerUser?.name ?? null,
+      },
+      teamId: quote.teamId,
+      expiresAt: quote.expiresAt,
+      totals: {
+        subtotal: quote.subtotal,
+        discount: quote.discountTotal,
+        net: quote.netTotal,
+        tax: quote.taxTotal,
+        grandTotal: quote.grandTotal,
+        marginTotal: quote.marginTotal,
+        marginPct: quote.marginPct,
+      },
+      risk:
+        quote.riskScore != null
+          ? { score: quote.riskScore, level: quote.riskLevel ?? "none" }
+          : null,
+      availableActions: getAvailableActions(quote.status, role),
+      createdAt: quote.createdAt,
+      updatedAt: quote.updatedAt,
+    };
+  });
 }
 
 async function resolveCustomerTierId(
@@ -540,10 +657,9 @@ quotesRouter.get("/quotes", async (req, res, next) => {
             })
           : null;
 
-      // Enrich items with read model? For list, return lightweight but include totals etc.
-      const enriched = await Promise.all(
-        items.map((q: any) => buildQuoteReadModel(tx, tenantId, q, role)),
-      );
+      // Enrich with a lightweight batched read model (3 queries total) — the
+      // full read model per quote would fire ~10 sequential queries each.
+      const enriched = await buildQuoteListModels(tx, tenantId, items, role);
 
       return { data: enriched, page: { limit, nextCursor } };
     });
