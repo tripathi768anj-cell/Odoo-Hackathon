@@ -212,6 +212,17 @@ export type ItemResponse<T> = { data: T };
 export type Customer = { id: string; name: string; tier?: string; status?: string };
 export type CustomerContact = { id: string; name: string; email: string };
 
+export type Invoice = {
+  id: string;
+  number: string;
+  status: "draft" | "issued" | "partial" | "paid" | "void";
+  currency: string;
+  grandTotal: string;
+  balance: string;
+  dueAt: string;
+  revision: number;
+};
+
 export type ApprovalStep = {
   id: string;
   step: number;
@@ -375,4 +386,20 @@ export const dealHealthApi = {
 export const approvalsApi = {
   inbox: (query?: { limit?: number; cursor?: string }) =>
     apiRequest<ListResponse<ApprovalInboxItem>>("/approvals/inbox", { query }),
+};
+
+export const billingApi = {
+  invoices: (query?: { status?: string; limit?: number }) =>
+    apiRequest<{ invoices: Invoice[] }>("/invoices", { query }),
+  createRazorpayOrder: (invoiceId: string) =>
+    apiRequest<{ data: { keyId: string; order: { id: string; amount: number; currency: string }; invoice: Invoice } }>(
+      `/invoices/${invoiceId}/razorpay/order`,
+      { method: "POST", idempotencyKey: newIdempotencyKey() },
+    ),
+  verifyRazorpayPayment: (invoiceId: string, input: { razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string }) =>
+    apiRequest<{ data: { invoice: Invoice } }>(`/invoices/${invoiceId}/razorpay/verify`, {
+      method: "POST",
+      body: input,
+      idempotencyKey: newIdempotencyKey(),
+    }),
 };

@@ -86,6 +86,8 @@ const baseSchema = z.object({
   OBJECT_STORAGE_REGION: optionalUrl,
   PAYMENT_PROVIDER: optionalUrl,
   PAYMENT_WEBHOOK_SECRET: optionalUrl,
+  RAZORPAY_KEY_ID: z.string().trim().min(1).optional(),
+  RAZORPAY_KEY_SECRET: z.string().trim().min(1).optional(),
   ERROR_TRACKING_DSN: optionalUrl,
 });
 
