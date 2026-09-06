@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, MotionConfig, type Variants } from "framer-motion";
 import {
   Activity,
@@ -808,6 +809,7 @@ function downloadCsv(filename: string, headers: string[], rows: (string | number
 }
 
 export default function DealFlow360App() {
+  const router = useRouter();
   const [route, setRoute] = useState<Route>("landing");
   const { theme, setTheme } = useTheme();
   const [toast, setToast] = useState("");
@@ -2235,7 +2237,7 @@ export default function DealFlow360App() {
             actions={
               <>
                 <Button onClick={async () => { const { downloadInvoicePdf } = await import("./lib/pdf"); downloadInvoicePdf({ id: "INV-1042", account: "Acme Corp", due: "Sep 15, 2026", status: invoicePaid ? "Paid and reconciled" : "Open", lines }); notify("Official tax invoice PDF generated", "success"); }}><Download size={15} /> Save PDF</Button>
-                <Button tone="primary" onClick={() => { window.location.href = "/invoice-detail"; }}>
+                <Button tone="primary" onClick={() => router.push("/invoice-detail")}>
                   <CreditCard size={15} /> Pay with Razorpay
                 </Button>
                 <Button tone="success" disabled={invoicePaid} onClick={receivePayment}>
@@ -2267,7 +2269,7 @@ export default function DealFlow360App() {
             </div>
             <div className="cluster" style={{ justifyContent: "space-between", marginTop: 14 }}>
               <span className="subtle">This screen is the demo workflow. Razorpay opens on the live invoice page.</span>
-              <Button tone="primary" onClick={() => { window.location.href = "/invoice-detail"; }}>
+              <Button tone="primary" onClick={() => router.push("/invoice-detail")}>
                 <CreditCard size={15} /> Open Razorpay Payment
               </Button>
             </div>
