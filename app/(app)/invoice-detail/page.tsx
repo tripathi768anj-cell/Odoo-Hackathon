@@ -122,6 +122,25 @@ export default function InvoiceDetailPage() {
           ]}
         />
       </Card>
+      <Card title="Online Payment">
+        <div className="notice blue">
+          {loading
+            ? "Checking for an invoice that can be paid..."
+            : !invoice
+              ? "No backend invoice is available yet. Convert an approved quote to an order and issue an invoice first."
+              : invoicePaid
+                ? "This invoice has already been paid and reconciled."
+                : "Pay this invoice securely with Razorpay."}
+        </div>
+        <div className="cluster" style={{ justifyContent: "space-between", marginTop: 14 }}>
+          <span className="subtle">
+            {invoice ? `${invoice.number} · ${invoice.currency} ${invoice.balance} outstanding` : "Invoice required"}
+          </span>
+          <Button tone="success" disabled={!invoice || invoicePaid || paymentLoading} onClick={receivePayment}>
+            <CheckCircle2 size={15} /> {invoicePaid ? "Payment Settled" : paymentLoading ? "Opening Razorpay..." : "Pay with Razorpay"}
+          </Button>
+        </div>
+      </Card>
       <ToastStack toast={toast} kind={kind} onDismiss={dismiss} />
     </>
   );
