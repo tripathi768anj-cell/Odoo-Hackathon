@@ -2231,12 +2231,15 @@ export default function DealFlow360App() {
           <PageHead
             eyebrow="Billing Reconciliation"
             title="Invoice INV-1042: Acme Corp"
-            subtitle="Review line-item billing, payment terms, and Stripe ERP settlement confirmation."
+            subtitle="Review line-item billing, payment terms, and Razorpay payment settlement."
             actions={
               <>
                 <Button onClick={async () => { const { downloadInvoicePdf } = await import("./lib/pdf"); downloadInvoicePdf({ id: "INV-1042", account: "Acme Corp", due: "Sep 15, 2026", status: invoicePaid ? "Paid and reconciled" : "Open", lines }); notify("Official tax invoice PDF generated", "success"); }}><Download size={15} /> Save PDF</Button>
+                <Button tone="primary" onClick={() => { window.location.href = "/invoice-detail"; }}>
+                  <CreditCard size={15} /> Pay with Razorpay
+                </Button>
                 <Button tone="success" disabled={invoicePaid} onClick={receivePayment}>
-                  <CheckCircle2 size={15} /> {invoicePaid ? "Payment Settled" : "Receive Payment"}
+                  <CheckCircle2 size={15} /> {invoicePaid ? "Payment Settled" : "Record Manual Payment"}
                 </Button>
               </>
             }
@@ -2256,6 +2259,18 @@ export default function DealFlow360App() {
                 ]
               ]}
             />
+          </Card>
+          <Card title="Online Payment">
+            <div className="notice blue">
+              Use Razorpay for the secure online payment flow. The payment page will load the backend invoice,
+              create a Razorpay order, and verify the payment before reconciliation.
+            </div>
+            <div className="cluster" style={{ justifyContent: "space-between", marginTop: 14 }}>
+              <span className="subtle">This screen is the demo workflow. Razorpay opens on the live invoice page.</span>
+              <Button tone="primary" onClick={() => { window.location.href = "/invoice-detail"; }}>
+                <CreditCard size={15} /> Open Razorpay Payment
+              </Button>
+            </div>
           </Card>
         </>
       )}
