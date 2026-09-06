@@ -56,6 +56,8 @@ function RegisterContent() {
           setError(
             "This deployment already has a workspace and doesn't support self-serve signup after initial setup. Ask an existing admin to invite you by email, or sign in if you already have an account.",
           );
+        } else if (e.status >= 500) {
+          setError("The backend is unavailable or missing its database environment. Start the backend with a configured backend/.env file.");
         } else {
           setError(e.message || "Could not create the workspace.");
         }

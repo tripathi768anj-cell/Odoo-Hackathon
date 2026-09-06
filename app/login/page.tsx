@@ -32,6 +32,8 @@ function LoginContent() {
       if (e instanceof ApiError) {
         if (e.status === 429) {
           setError("Too many attempts. Wait a few minutes and try again.");
+        } else if (e.status >= 500) {
+          setError("The backend is unavailable or missing its database environment. Start the backend with a configured backend/.env file.");
         } else {
           setError(e.message || "Invalid email or password.");
         }
