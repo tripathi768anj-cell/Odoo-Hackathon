@@ -23,7 +23,11 @@ function LoginContent() {
     setSubmitting(true);
     try {
       await login({ email, password });
-      router.push("/dashboard");
+      const requestedPath = new URLSearchParams(window.location.search).get("from");
+      const destination = requestedPath && requestedPath.startsWith("/") && !requestedPath.startsWith("//")
+        ? requestedPath
+        : "/dashboard";
+      router.push(destination);
     } catch (e) {
       if (e instanceof ApiError) {
         if (e.status === 429) {
