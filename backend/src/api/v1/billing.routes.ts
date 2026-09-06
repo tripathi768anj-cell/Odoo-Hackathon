@@ -114,10 +114,12 @@ billingRouter.post("/invoices/:id/razorpay/order", async (req, res, next) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        // Razorpay test accounts only settle INR; invoice currency (e.g. USD) makes
+        // Checkout open but stall with no available payment method.
         amount: rupeesToPaise(invoice.balance),
-        currency: invoice.currency,
+        currency: "INR",
         receipt: invoice.number,
-        notes: { invoiceId: invoice.id, tenantId },
+        notes: { invoiceId: invoice.id, tenantId, invoiceCurrency: invoice.currency },
       }),
     });
     if (!response.ok) throw new ApiError(502, "DEPENDENCY_ERROR", "Could not create Razorpay order");

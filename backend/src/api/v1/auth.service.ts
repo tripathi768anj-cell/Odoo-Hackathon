@@ -262,9 +262,6 @@ export async function switchOrganization(
 
 export async function bootstrap(input: BootstrapInput) {
   const db = getDb();
-  const orgCount = await db.select().from(organizations).limit(1);
-  if (orgCount.length > 0)
-    throw new ApiError(403, "FORBIDDEN", "Bootstrap not allowed after initial setup");
 
   const pwdErr = validatePasswordStrength(input.password);
   if (pwdErr) throw new ApiError(400, "BAD_REQUEST", pwdErr);
