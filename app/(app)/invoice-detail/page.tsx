@@ -28,7 +28,10 @@ export default function InvoiceDetailPage() {
   }, [lines]);
 
   useEffect(() => {
-    billingApi.invoices({ limit: 1 }).then((result) => setInvoice(result.invoices[0] ?? null)).catch((error) => {
+    billingApi.invoices({ status: "issued", limit: 100 }).then((result) => {
+      const payable = result.invoices.find((candidate) => candidate.status === "issued" || candidate.status === "partial");
+      setInvoice(payable ?? null);
+    }).catch((error) => {
       notify(error instanceof ApiError ? error.message : "Could not load invoices.", "error");
     }).finally(() => setLoading(false));
   }, [notify]);
