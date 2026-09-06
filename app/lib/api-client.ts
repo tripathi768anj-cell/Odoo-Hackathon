@@ -217,6 +217,7 @@ export type Invoice = {
   number: string;
   status: "draft" | "issued" | "partial" | "paid" | "void";
   currency: string;
+  customerId: string;
   grandTotal: string;
   balance: string;
   dueAt: string;

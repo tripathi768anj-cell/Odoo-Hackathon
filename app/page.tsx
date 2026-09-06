@@ -845,6 +845,10 @@ export default function DealFlow360App() {
   useEffect(() => {
     const applyHash = () => {
       const hash = window.location.hash.replace(/^#\/?/, "") as Route;
+      if (hash === "invoices") {
+        router.push("/invoices");
+        return;
+      }
       if ((flowRoutes as string[]).includes(hash) || hash === "landing" || hash === "register" || hash === "forgot-password") {
         setRoute(hash);
       } else if (hash === "login") {
