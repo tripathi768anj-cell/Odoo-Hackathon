@@ -51,7 +51,11 @@ export function createApp() {
   app.use(
     cors({
       origin: (origin, cb) => {
-        const allow = [env.APP_ORIGIN, env.PORTAL_ORIGIN];
+        const allow = [
+          env.APP_ORIGIN,
+          env.PORTAL_ORIGIN,
+          "https://odoo-hackathon-delta.vercel.app",
+        ];
         if (!origin || allow.includes(origin)) return cb(null, true);
         return cb(null, false);
       },

@@ -2,7 +2,11 @@
 // Access tokens live in memory only (never localStorage) and are attached per request by
 // whoever calls `setAccessToken` — see app/lib/auth-context.tsx, the only caller in this app.
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
+const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL;
+const productionApiUrl = "https://odoo-hackathon-production-b84f.up.railway.app/api/v1";
+const API_BASE_URL = process.env.NODE_ENV === "production" && (!configuredApiUrl || configuredApiUrl.includes("localhost"))
+  ? productionApiUrl
+  : configuredApiUrl ?? "http://localhost:4000/api/v1";
 
 export type ApiErrorBody = {
   code: string;
