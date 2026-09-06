@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { AuthProvider } from "./lib/auth-context";
 
 export const metadata: Metadata = {
   title: "DealFlow 360 | Enterprise Sales & Revenue Operations",
@@ -17,7 +16,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
         <a className="skip-link" href="#main">Skip to content</a>
-        <AuthProvider>{children}</AuthProvider>
+        {children}
       </body>
     </html>
   );
