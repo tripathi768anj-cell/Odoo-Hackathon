@@ -272,7 +272,7 @@ export async function bootstrap(input: BootstrapInput) {
     .where(eq(organizations.slug, input.slug))
     .limit(1);
   if (slugExists.length > 0)
-    throw new ApiError(409, "CONFLICT", "Organization slug already exists");
+    throw new ApiError(409, "CONFLICT", "Organization slug already exist");
 
   const emailExists = await db
     .select()
